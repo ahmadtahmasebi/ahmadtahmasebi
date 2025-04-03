@@ -1,0 +1,7 @@
+pandas
+xlsxwriter
+reportlab
+matplotlib
+python-barcode
+Pillow
+PyQt5
