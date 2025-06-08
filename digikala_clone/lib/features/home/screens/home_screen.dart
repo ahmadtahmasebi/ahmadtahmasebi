@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../core/models/news_item_model.dart'; // Import NewsItemType
 import '../../../shared/widgets/app_drawer.dart';
 import '../../main_sections/placeholder/section_placeholder.dart';
-import '../../products/widgets/product_listing_tab_widget.dart'; // Import the new widget
+import '../../products/widgets/product_listing_tab_widget.dart';
+import '../../news/widgets/news_listing_tab_widget.dart'; // Import NewsListingTabWidget
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -13,14 +15,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Define identifiers for categories, matching what might be stored in Firestore
-  static const String drugCategoryId = 'drugs'; // Example identifier
+  // Define identifiers for categories and types
+  static const String drugCategoryId = 'drugs';
   static const String cosmeticsCategoryId = 'cosmetics';
   static const String supplementsCategoryId = 'supplements';
   static const String herbalCategoryId = 'herbal';
   static const String equipmentCategoryId = 'equipment';
-  static const String newsCategoryId = 'news'; // For news items, not products
-  static const String articlesCategoryId = 'articles'; // For articles, not products
+  // For news items, we use NewsItemType enum, but can use string identifiers for mapping if preferred
+  static const String newsTabId = 'news_tab';
+  static const String articlesTabId = 'articles_tab';
 
 
   final List<Map<String, dynamic>> _tabInfo = [
@@ -29,8 +32,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     {'text': 'مکمل‌ها', 'id': supplementsCategoryId, 'icon': Icons.health_and_safety_outlined},
     {'text': 'گیاهی', 'id': herbalCategoryId, 'icon': Icons.eco_outlined},
     {'text': 'تجهیزات', 'id': equipmentCategoryId, 'icon': Icons.medical_services_outlined},
-    {'text': 'اخبار', 'id': newsCategoryId, 'icon': Icons.article_outlined}, // Using news icon
-    {'text': 'مقالات', 'id': articlesCategoryId, 'icon': Icons.school_outlined}, // Using articles icon
+    {'text': 'اخبار', 'id': newsTabId, 'icon': Icons.article_outlined},
+    {'text': 'مقالات', 'id': articlesTabId, 'icon': Icons.school_outlined},
   ];
 
   late List<Tab> _tabs;
@@ -41,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.initState();
     _tabs = _tabInfo.map((info) => Tab(text: info['text'], icon: Icon(info['icon']))).toList();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _buildTabViews(); // Initialize tab views
+    _buildTabViews();
   }
 
   void _buildTabViews() {
@@ -50,21 +53,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       String tabText = info['text'];
 
       if (tabId == cosmeticsCategoryId) {
-        // Cosmetics tab gets the ProductListingTabWidget
         return ProductListingTabWidget(mainCategoryIdentifier: cosmeticsCategoryId);
+      } else if (tabId == newsTabId) {
+        return const NewsListingTabWidget(newsItemType: NewsItemType.news);
+      } else if (tabId == articlesTabId) {
+        return const NewsListingTabWidget(newsItemType: NewsItemType.article);
       }
       // TODO: Implement specific listing widgets for other product categories (دارویی, مکمل‌ها, etc.)
-      // For now, other product-like categories will also use ProductListingTabWidget for demonstration
-      // if (tabId == drugCategoryId || tabId == supplementsCategoryId || tabId == herbalCategoryId || tabId == equipmentCategoryId) {
-      //   return ProductListingTabWidget(mainCategoryIdentifier: tabId);
-      // }
-      // For News and Articles, they will have their own specific widgets later.
-      // else if (tabId == newsCategoryId || tabId == articlesCategoryId) {
-      //   return SectionPlaceholder(title: tabText, color: Colors.teal[50]);
+      // For now, other product-like categories will also use ProductListingTabWidget or placeholders
+      // else if (tabId == drugCategoryId || tabId == supplementsCategoryId || tabId == herbalCategoryId || tabId == equipmentCategoryId) {
+      //   // return ProductListingTabWidget(mainCategoryIdentifier: tabId); // If using same widget
+      //   Color? placeholderColor = (_tabInfo.indexOf(info) % 2 == 0) ? Colors.orange[50] : Colors.green[50];
+      //   return SectionPlaceholder(title: tabText, color: placeholderColor);
       // }
       else {
-        // Default placeholder for other tabs
-        Color? placeholderColor = (_tabInfo.indexOf(info) % 2 == 0) ? Colors.red[50] : Colors.blue[50];
+        Color? placeholderColor = (_tabInfo.indexOf(info) % 3 == 0) ? Colors.red[50] : (_tabInfo.indexOf(info) % 3 == 1) ? Colors.blue[50] : Colors.yellow[50];
         return SectionPlaceholder(title: tabText, color: placeholderColor);
       }
     }).toList();
@@ -82,13 +85,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return Scaffold(
       appBar: AppBar(
         title: const Text('داروخانه آنلاین', style: TextStyle(fontFamily: 'IranYekan')),
-        backgroundColor: Colors.red[700],
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ?? Colors.red[700],
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor ?? Colors.white,
         bottom: TabBar(
           controller: _tabController,
           tabs: _tabs,
           isScrollable: true,
           labelStyle: const TextStyle(fontFamily: 'IranYekan', fontWeight: FontWeight.bold),
           unselectedLabelStyle: const TextStyle(fontFamily: 'IranYekan'),
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
         ),
       ),
       drawer: const AppDrawer(),

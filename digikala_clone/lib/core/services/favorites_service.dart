@@ -1,53 +1,77 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:firebase_auth/firebase_auth.dart'; // Not strictly needed here if userId is passed in
+// No longer using shared_preferences for this service
 
 class FavoritesService {
-  static const _kFavoriteProductIdsKey = 'favoriteProductIds';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const String _usersCollectionName = 'users';
+  static const String _favoriteProductIdsField = 'favoriteProductIds';
 
-  // Helper method to get SharedPreferences instance
-  Future<SharedPreferences> _getPrefs() async {
-    return SharedPreferences.getInstance();
+  DocumentReference _userDocRef(String userId) {
+    return _firestore.collection(_usersCollectionName).doc(userId);
   }
 
-  Future<List<String>> getFavoriteProductIds() async {
-    final prefs = await _getPrefs();
-    return prefs.getStringList(_kFavoriteProductIdsKey) ?? [];
+  Future<List<String>> getFavoriteProductIds(String userId) async {
+    if (userId.isEmpty) return []; // Or handle unauthenticated user as needed
+    try {
+      final docSnapshot = await _userDocRef(userId).get();
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data() as Map<String, dynamic>?;
+        if (data != null && data.containsKey(_favoriteProductIdsField)) {
+          // Ensure the data is correctly cast to List<String>
+          final favs = data[_favoriteProductIdsField] as List<dynamic>?;
+          return favs?.map((e) => e.toString()).toList() ?? [];
+        }
+      }
+      return []; // Return empty list if no document or no field
+    } catch (e) {
+      print('Error getting favorite product IDs: $e');
+      return []; // Return empty on error
+    }
   }
 
-  Future<void> _saveFavoriteProductIds(List<String> ids) async {
-    final prefs = await _getPrefs();
-    await prefs.setStringList(_kFavoriteProductIdsKey, ids);
+  Future<void> addFavoriteProductId(String userId, String productId) async {
+    if (userId.isEmpty) return;
+    try {
+      await _userDocRef(userId).set(
+        {_favoriteProductIdsField: FieldValue.arrayUnion([productId])},
+        SetOptions(merge: true), // Creates document if it doesn't exist, merges fields
+      );
+    } catch (e) {
+      print('Error adding favorite product ID: $e');
+      rethrow; // Allow UI to handle
+    }
   }
 
-  Future<bool> isFavorite(String productId) async {
-    final ids = await getFavoriteProductIds();
+  Future<void> removeFavoriteProductId(String userId, String productId) async {
+    if (userId.isEmpty) return;
+    try {
+      await _userDocRef(userId).update(
+        {_favoriteProductIdsField: FieldValue.arrayRemove([productId])},
+      );
+    } catch (e) {
+      print('Error removing favorite product ID: $e');
+      rethrow; // Allow UI to handle
+    }
+  }
+
+  Future<bool> isFavorite(String userId, String productId) async {
+    if (userId.isEmpty) return false;
+    final ids = await getFavoriteProductIds(userId);
     return ids.contains(productId);
   }
 
-  Future<void> addFavoriteProductId(String productId) async {
-    final ids = await getFavoriteProductIds();
-    if (!ids.contains(productId)) {
-      ids.add(productId);
-      await _saveFavoriteProductIds(ids);
+  Future<bool> toggleFavorite(String userId, String productId) async {
+    if (userId.isEmpty) {
+      throw Exception("User not logged in. Cannot toggle favorite.");
     }
-  }
-
-  Future<void> removeFavoriteProductId(String productId) async {
-    final ids = await getFavoriteProductIds();
-    if (ids.contains(productId)) {
-      ids.remove(productId);
-      await _saveFavoriteProductIds(ids);
-    }
-  }
-
-  Future<bool> toggleFavorite(String productId) async {
-    final ids = await getFavoriteProductIds();
-    bool isCurrentlyFavorite = ids.contains(productId);
+    final isCurrentlyFavorite = await isFavorite(userId, productId);
     if (isCurrentlyFavorite) {
-      ids.remove(productId);
+      await removeFavoriteProductId(userId, productId);
+      return false; // New state: not favorite
     } else {
-      ids.add(productId);
+      await addFavoriteProductId(userId, productId);
+      return true; // New state: is favorite
     }
-    await _saveFavoriteProductIds(ids);
-    return !isCurrentlyFavorite; // Return the new state
   }
 }

@@ -44,6 +44,9 @@ dependencies:
   provider: ^6.1.2
   firebase_auth: ^4.19.4
   google_sign_in: ^6.2.1
+  uuid: ^4.4.0
+  cloud_functions: ^4.6.9
+  file_picker: ^6.2.1
 
 dev_dependencies:
   flutter_test:

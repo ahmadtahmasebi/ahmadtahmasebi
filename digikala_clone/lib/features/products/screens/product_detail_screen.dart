@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/product_model.dart';
 import '../../../core/models/user_comment_model.dart';
+import '../../../core/services/auth_service.dart'; // Import AuthService
 import '../../../core/services/firestore_service.dart';
 import '../../../core/services/product_service_interface.dart';
-import '../../../core/services/favorites_service.dart'; // Import FavoritesService
+import '../../../core/services/favorites_service.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String productId;
@@ -20,13 +21,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   late Future<Product?> _productFuture;
   late Stream<List<UserComment>> _commentsStream;
 
-  bool _isCloudLiked = false; // For Firestore like
-  int _cloudLikesCount = 0;  // For Firestore like count
-  bool _isLocalFavorite = false; // For shared_preferences favorite
+  bool _isCloudLiked = false;
+  int _cloudLikesCount = 0;
+  bool _isUserFavorite = false; // Renamed from _isLocalFavorite
 
-  final String _currentUserId = "test_user_001";
+  String? _currentUserId; // Will be fetched from AuthService
   final IProductService _productService = FirestoreService();
-  final FavoritesService _favoritesService = FavoritesService(); // Instantiate FavoritesService
+  final FavoritesService _favoritesService = FavoritesService();
+  final AuthService _authService = AuthService(); // Instantiate AuthService
 
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
@@ -34,20 +36,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _currentUserId = _authService.currentUser?.uid;
     _loadProductDetails(incrementView: true);
     _commentsStream = _productService.getProductComments(widget.productId);
-    _loadFavoriteStatus();
+    if (_currentUserId != null) {
+      _loadFavoriteStatus();
+    }
   }
 
   Future<void> _loadProductDetails({bool incrementView = false}) async {
-    if (incrementView) {
+    if (incrementView && _currentUserId != null) { // Only increment if user is logged in? Or for any view?
       _productService.incrementProductView(widget.productId);
     }
     _productFuture = _productService.getProductById(widget.productId);
     _productFuture.then((product) {
       if (mounted && product != null) {
         setState(() {
-          _isCloudLiked = product.likedBy?.contains(_currentUserId) ?? false;
+          if (_currentUserId != null) {
+            _isCloudLiked = product.likedBy?.contains(_currentUserId!) ?? false;
+          } else {
+            _isCloudLiked = false;
+          }
           _cloudLikesCount = product.likes;
         });
       }
@@ -55,14 +64,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _loadFavoriteStatus() async {
-    _isLocalFavorite = await _favoritesService.isFavorite(widget.productId);
+    if (_currentUserId == null) return;
+    _isUserFavorite = await _favoritesService.isFavorite(_currentUserId!, widget.productId);
     if (mounted) {
       setState(() {});
     }
   }
 
   Future<void> _toggleCloudLike() async {
-    Product? product = await _productFuture; // Ensure product is loaded before trying to access its details
+    if (_currentUserId == null) {
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('برای لایک کردن ابتدا وارد شوید.', style: TextStyle(fontFamily: 'IranYekan'))),
+      );
+      return;
+    }
+    Product? product = await _productFuture;
     if (product == null) return;
 
     bool newLikedState = !_isCloudLiked;
@@ -77,47 +93,67 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     try {
       if (newLikedState) {
-        await _productService.likeProduct(widget.productId, _currentUserId);
+        await _productService.likeProduct(widget.productId, _currentUserId!);
       } else {
-        await _productService.unlikeProduct(widget.productId, _currentUserId);
+        await _productService.unlikeProduct(widget.productId, _currentUserId!);
       }
     } catch (e) {
       if (mounted) {
-        setState(() { // Revert optimistic update
+        setState(() {
           _isCloudLiked = !newLikedState;
           _cloudLikesCount = _cloudLikesCount + (newLikedState ? -1 : 1);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطا در بروزرسانی لایک ابری: $e', style: const TextStyle(fontFamily: 'IranYekan'))),
+          SnackBar(content: Text('خطا در بروزرسانی لایک: $e', style: const TextStyle(fontFamily: 'IranYekan'))),
         );
       }
     }
   }
 
-  Future<void> _toggleLocalFavorite() async {
-    final newFavoriteState = await _favoritesService.toggleFavorite(widget.productId);
-    if (mounted) {
-      setState(() {
-        _isLocalFavorite = newFavoriteState;
-      });
+  Future<void> _toggleFavorite() async { // Renamed from _toggleLocalFavorite
+    if (_currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(
-          newFavoriteState ? 'به علاقه‌مندی‌ها اضافه شد' : 'از علاقه‌مندی‌ها حذف شد',
-          style: const TextStyle(fontFamily: 'IranYekan'))),
+        const SnackBar(content: Text('برای افزودن به علاقه‌مندی‌ها ابتدا وارد شوید.', style: TextStyle(fontFamily: 'IranYekan'))),
       );
+      return;
+    }
+    try {
+      final newFavoriteState = await _favoritesService.toggleFavorite(_currentUserId!, widget.productId);
+      if (mounted) {
+        setState(() {
+          _isUserFavorite = newFavoriteState;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(
+            newFavoriteState ? 'به علاقه‌مندی‌ها اضافه شد' : 'از علاقه‌مندی‌ها حذف شد',
+            style: const TextStyle(fontFamily: 'IranYekan'))),
+        );
+      }
+    } catch (e) {
+       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا: $e', style: const TextStyle(fontFamily: 'IranYekan'))),
+        );
+      }
     }
   }
 
 
   Future<void> _addComment() async {
     if (_commentController.text.isEmpty) return;
+     if (_currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('برای ثبت نظر ابتدا وارد شوید.', style: TextStyle(fontFamily: 'IranYekan'))),
+      );
+      return;
+    }
 
     final newComment = UserComment(
       id: '',
       entityId: widget.productId,
       entityType: "product",
       userId: _currentUserId,
-      userName: "کاربر تستی",
+      userName: _authService.currentUser?.displayName ?? _authService.currentUser?.email ?? "کاربر ناشناس",
       text: _commentController.text,
       createdAt: Timestamp.now(),
     );
@@ -160,22 +196,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         backgroundColor: Colors.red[700],
         actions: [
-          FutureBuilder<Product?>(
-            future: _productFuture, // Only build IconButton if product is loaded
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data != null) {
-                return IconButton(
-                  icon: Icon(
-                    _isLocalFavorite ? Icons.bookmark : Icons.bookmark_border,
-                    color: Colors.white,
-                  ),
-                  onPressed: _toggleLocalFavorite,
-                  tooltip: 'علاقه‌مندی',
-                );
+          if (_currentUserId != null) // Only show favorite button if user is logged in
+            FutureBuilder<Product?>(
+              future: _productFuture,
+              builder: (context, snapshot) {
+                if (snapshot.hasData && snapshot.data != null) {
+                  return IconButton(
+                    icon: Icon(
+                      _isUserFavorite ? Icons.bookmark : Icons.bookmark_border, // Updated state variable
+                      color: Colors.white,
+                    ),
+                    onPressed: _toggleFavorite, // Updated method name
+                    tooltip: 'علاقه‌مندی',
+                  );
+                }
+                return const SizedBox.shrink();
               }
-              return const SizedBox.shrink(); // Don't show if product not loaded
-            }
-          )
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.bookmark_border, color: Colors.white54),
+              tooltip: 'برای افزودن به علاقه‌مندی‌ها وارد شوید',
+              onPressed: () {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('برای افزودن به علاقه‌مندی‌ها ابتدا وارد شوید.', style: TextStyle(fontFamily: 'IranYekan'))),
+                  );
+              },
+            )
         ],
       ),
       body: FutureBuilder<Product?>(

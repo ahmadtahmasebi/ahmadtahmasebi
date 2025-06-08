@@ -19,9 +19,8 @@ class AuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      // Handle specific Firebase Auth errors (e.g., email-already-in-use, weak-password)
       print('Sign up failed: ${e.message}');
-      throw e; // Rethrow to be caught by UI
+      throw e;
     } catch (e) {
       print('Sign up failed with general error: $e');
       throw e;
@@ -36,7 +35,6 @@ class AuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      // Handle errors (e.g., user-not-found, wrong-password)
       print('Sign in failed: ${e.message}');
       throw e;
     } catch (e) {
@@ -48,10 +46,9 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut(); // Sign out from Google if previously signed in
+      await _googleSignIn.signOut();
     } catch (e) {
       print('Error signing out from Google: $e');
-      // Still proceed to sign out from Firebase
     }
     await _firebaseAuth.signOut();
   }
@@ -61,7 +58,6 @@ class AuthService {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        // The user canceled the sign-in
         return null;
       }
 
@@ -91,6 +87,21 @@ class AuthService {
     } catch (e) {
       print('Password reset email failed with general error: $e');
       throw e;
+    }
+  }
+
+  // Check for admin custom claim
+  Future<bool> isAdminCheck() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      return false;
+    }
+    try {
+      IdTokenResult idTokenResult = await user.getIdTokenResult(true); // Force refresh
+      return idTokenResult.claims?['isAdmin'] == true;
+    } catch (e) {
+      print('Error checking admin status: $e');
+      return false;
     }
   }
 }
