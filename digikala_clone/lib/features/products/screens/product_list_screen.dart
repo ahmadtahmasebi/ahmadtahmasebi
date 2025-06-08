@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../core/models/category_model.dart'; // Import Category model
+import '../../../core/models/category_model.dart';
 import '../../../core/models/product_model.dart';
-import '../../../core/services/database_helper.dart';
+import '../../../core/services/firestore_service.dart'; // Import FirestoreService
+import '../../../core/services/product_service_interface.dart';
+import '../../../core/services/category_service_interface.dart';
 import '../widgets/product_card.dart';
+import '../../../shared/widgets/app_drawer.dart'; // Import AppDrawer
 
 class ProductListScreen extends StatefulWidget {
   ProductListScreen({Key? key}) : super(key: key);
@@ -12,123 +15,42 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
-  late Future<List<Product>> _productsFuture;
-  late Future<List<Category>> _categoriesFuture;
+  late Stream<List<Product>> _productsStream;
+  late Stream<List<Category>> _categoriesStream;
   String? _selectedCategoryId;
 
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  // Use interfaces for service declaration, instantiate with FirestoreService
+  final IProductService _productService = FirestoreService();
+  final ICategoryService _categoryService = FirestoreService();
 
-  final List<Category> _mockCategoriesSeed = [
-    Category(id: 'cat1', name: 'الکترونیک'),
-    Category(id: 'cat2', name: 'پوشاک'),
-    Category(id: 'cat3', name: 'خانه و آشپزخانه'),
-    Category(id: 'cat4', name: 'کتاب و لوازم التحریر'),
-  ];
 
-  final List<Product> _mockProductsSeed = [
-    Product(
-      id: '1',
-      name: 'لپ تاپ حرفه ای با پردازنده قدرتمند',
-      description: 'Description for product 1',
-      imageUrl: 'https://picsum.photos/seed/lp1/200/200',
-      price: 25000000,
-      categoryId: 'cat1', // Electronics
-    ),
-    Product(
-      id: '2',
-      name: 'گوشی هوشمند جدید با دوربین عالی',
-      description: 'Description for product 2',
-      imageUrl: 'https://picsum.photos/seed/ph2/200/200',
-      price: 15000000,
-      categoryId: 'cat1', // Electronics
-    ),
-    Product(
-      id: '3',
-      name: 'تیشرت نخی آستین کوتاه مردانه',
-      description: 'Description for product 3',
-      imageUrl: 'https://picsum.photos/seed/ts3/200/200',
-      price: 300000,
-      categoryId: 'cat2', // Apparel
-    ),
-    Product(
-      id: '4',
-      name: 'سرویس قابلمه ۱۰ پارچه گرانیتی',
-      description: 'Description for product 4',
-      imageUrl: 'https://picsum.photos/seed/kp4/200/200',
-      price: 3500000,
-      categoryId: 'cat3', // Home & Kitchen
-    ),
-    Product(
-      id: '5',
-      name: 'هدفون بی سیم با کیفیت صدای عالی',
-      description: 'Description for product 5',
-      imageUrl: 'https://picsum.photos/seed/hp5/200/200',
-      price: 1200000,
-      categoryId: 'cat1', // Electronics
-    ),
-     Product(
-      id: '6',
-      name: 'کتاب مجموعه داستان کوتاه ایرانی',
-      description: 'Description for product 6',
-      imageUrl: 'https://picsum.photos/seed/bk6/200/200',
-      price: 150000,
-      categoryId: 'cat4', // Books
-    ),
-    Product(
-      id: '7',
-      name: 'کفش ورزشی مخصوص دویدن بانوان',
-      description: 'Description for product 7',
-      imageUrl: 'https://picsum.photos/seed/sh7/200/200',
-      price: 1200000,
-      categoryId: 'cat2', // Apparel
-    ),
-  ];
+  // Mock data for initial Firestore seeding (if needed, can be done via Firestore console too)
+  // For this subtask, we assume data is either already in Firestore or will be added manually.
+  // The old _mockCategoriesSeed and _mockProductsSeed are removed as per task.
 
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    _initializeStreams();
   }
 
-  Future<void> _initializeData() async {
-    await _dbHelper.database; // Ensure DB is initialized
-    await _seedInitialData();
-    _categoriesFuture = _dbHelper.getCategories();
-    _productsFuture = _loadProducts();
-    // Trigger a rebuild if initState finishes after the first frame
-    if (mounted) {
-       setState(() {});
-    }
+  void _initializeStreams() {
+    _categoriesStream = _categoryService.getCategories();
+    _updateProductStream(); // Initial product stream
   }
 
-  Future<void> _seedInitialData() async {
-    List<Category> existingCategories = await _dbHelper.getCategories();
-    if (existingCategories.isEmpty) {
-      for (var category in _mockCategoriesSeed) {
-        await _dbHelper.addCategory(category);
-      }
-    }
-
-    List<Product> existingProducts = await _dbHelper.getProducts();
-    if (existingProducts.isEmpty) {
-      for (var product in _mockProductsSeed) {
-        await _dbHelper.addProduct(product);
-      }
-    }
-  }
-
-  Future<List<Product>> _loadProducts() async {
+  void _updateProductStream() {
     if (_selectedCategoryId == null || _selectedCategoryId == 'all') {
-      return _dbHelper.getProducts();
+      _productsStream = _productService.getProducts();
     } else {
-      return _dbHelper.getProductsByCategoryId(_selectedCategoryId!);
+      _productsStream = _productService.getProductsByCategory(_selectedCategoryId!);
     }
   }
 
   void _onCategorySelected(String? categoryId) {
     setState(() {
       _selectedCategoryId = categoryId;
-      _productsFuture = _loadProducts();
+      _updateProductStream(); // Update the product stream based on new selection
     });
   }
 
@@ -139,6 +61,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         title: const Text('محصولات'),
         backgroundColor: Colors.red[700],
       ),
+      drawer: const AppDrawer(), // Add the AppDrawer to the Scaffold
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -146,12 +69,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: FutureBuilder<List<Product>>(
-                future: _productsFuture,
+              child: StreamBuilder<List<Product>>(
+                stream: _productsStream,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   } else if (snapshot.hasError) {
+                    print('Product Stream Error: ${snapshot.error}');
+                    print('Stack trace: ${snapshot.stackTrace}');
                     return Center(child: Text('خطا در بارگذاری محصولات: ${snapshot.error}'));
                   } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
                     final products = snapshot.data!;
@@ -170,9 +95,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     );
                   } else if (snapshot.hasData && (snapshot.data == null || snapshot.data!.isEmpty)) {
                      return const Center(child: Text('محصولی در این دسته بندی یافت نشد.'));
-                  }
-                  else {
-                    return const Center(child: Text('محصولی یافت نشد.'));
+                  } else {
+                    return const Center(child: Text('محصولی یافت نشد یا در حال بارگذاری...')); // Default message
                   }
                 },
               ),
@@ -184,15 +108,16 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _buildCategoryChips() {
-    return FutureBuilder<List<Category>>(
-      future: _categoriesFuture,
+    return StreamBuilder<List<Category>>(
+      stream: _categoriesStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) { // Show loader only if no data yet
           return const Padding(
             padding: EdgeInsets.all(8.0),
             child: Center(child: SizedBox(height: 30, width: 30, child: CircularProgressIndicator())),
           );
         } else if (snapshot.hasError) {
+          print('Category Stream Error: ${snapshot.error}');
           return Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text('خطا در بارگذاری دسته بندی ها: ${snapshot.error}'),
@@ -225,7 +150,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         label: Text(category.name),
                         selected: _selectedCategoryId == category.id,
                         onSelected: (selected) {
-                          _onCategorySelected(selected ? category.id : null);
+                           // If unselecting a chip, it means "all" unless another is selected immediately
+                          _onCategorySelected(selected ? category.id : 'all');
                         },
                         selectedColor: Colors.red[100],
                         backgroundColor: Colors.grey[200],
@@ -239,7 +165,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
         } else {
           return const Padding(
             padding: EdgeInsets.all(8.0),
-            child: Text('دسته بندی یافت نشد.'),
+            child: Text('دسته بندی یافت نشد.'), // Or a quiet loader
           );
         }
       },

@@ -38,6 +38,40 @@
   </script>
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
+
+  <!-- Firebase SDK -->
+  <!-- It's generally recommended to let FlutterFire handle Firebase JS SDK loading via firebase_options.dart -->
+  <!-- However, if manual SDK inclusion is needed, or for specific JS interop: -->
+  <!-- <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app.js"></script> -->
+  <!-- <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore.js"></script> -->
+  <!-- Add other Firebase services as needed -->
+
+  <!--
+    Firebase initialization is now primarily handled in main.dart via Firebase.initializeApp(options: ...).
+    The firebaseConfig block below is for cases where you might initialize Firebase using pure JavaScript
+    or if FlutterFire's auto-initialization needs a specific configuration injected here.
+    For most Flutter web apps using firebase_core, this explicit JS initialization is not needed
+    if firebase_options.dart is correctly set up and used in main.dart.
+  -->
+  <!--
+  <script>
+    // Your web app's Firebase configuration (replace with your actual config)
+    // This is a fallback or for direct JS SDK usage. FlutterFire CLI's firebase_options.dart is preferred.
+    var firebaseConfig = {
+      apiKey: "AIza...",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID",
+      measurementId: "YOUR_MEASUREMENT_ID" // Optional
+    };
+    // Initialize Firebase (only if not handled by FlutterFire in main.dart)
+    // if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+    //   firebase.initializeApp(firebaseConfig);
+    // }
+  </script>
+  -->
 </head>
 <body>
   <script>

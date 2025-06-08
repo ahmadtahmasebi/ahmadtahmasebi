@@ -1,3 +1,16 @@
+buildscript {
+    ext.kotlin_version = '1.9.23' // Or a version compatible with your Flutter/Gradle
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.1' // Check for latest compatible version
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.google.gms:google-services:4.4.1' // Added Google Services
+    }
+}
+
 allprojects {
     repositories {
         google()
