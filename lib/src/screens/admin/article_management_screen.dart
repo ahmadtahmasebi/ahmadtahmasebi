@@ -126,9 +126,8 @@ class _ArticleManagementScreenState extends State<ArticleManagementScreen> {
                           margin: EdgeInsets.symmetric(vertical: 4.0),
                           child: ListTile(
                             title: Text(article.title),
-                            subtitle: Text('Date: ${article.datePublished.toLocal().toString().split(' ')[0]}
-${article.content}', maxLines: 2, overflow: TextOverflow.ellipsis),
-                            isThreeLine: true,
+                            subtitle: Text('Date: ${article.datePublished.toLocal().toString().split(' ')[0]}\n${article.content}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                            isThreeLine: true, // Changed to true
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -142,7 +141,7 @@ ${article.content}', maxLines: 2, overflow: TextOverflow.ellipsis),
                                 ),
                               ],
                             ),
-                            onTap: () => _selectArticleForEditing(article), // Also select on tap
+                            onTap: () => _selectArticleForEditing(article),
                           ),
                         );
                       },

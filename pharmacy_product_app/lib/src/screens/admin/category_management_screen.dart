@@ -126,7 +126,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                           margin: EdgeInsets.symmetric(vertical: 4.0),
                           child: ListTile(
                             title: Text(category.name),
-                            subtitle: Text(category.description.isNotEmpty ? category.description : 'No description'),
+                            subtitle: Text(category.description.isNotEmpty ? 'Desc: ${category.description}' : 'No description', style: TextStyle(color: category.description.isNotEmpty ? Colors.black54 : Colors.grey)),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [

@@ -3,20 +3,25 @@ import '../../models/product.dart';
 import '../../models/category.dart';
 import '../../services/product_service.dart';
 import '../../services/category_service.dart';
+import '../details/product_detail_screen.dart';
 
 final ProductService _productService = ProductService();
 final CategoryService _categoryService = CategoryService();
 
 class HerbalScreen extends StatefulWidget {
   @override
-  _HerbalScreenState createState() => _HerbalScreenState();
+  createState() => _HerbalScreenState();
 }
 
 class _HerbalScreenState extends State<HerbalScreen> {
   List<Category> _categories = [];
-  List<Product> _products = [];
-  List<Product> _filteredProducts = [];
+  List<Product> _products = []; // All products fetched
+  List<Product> _filteredProducts = []; // Products for the selected category
   String? _selectedCategoryId;
+
+  // Define a fixed height for product cards for consistent row height
+  final double _productCardHeight = 280.0; // Increased height for better content visibility
+  final double _productCardWidth = 180.0;
 
   @override
   void initState() {
@@ -34,7 +39,7 @@ class _HerbalScreenState extends State<HerbalScreen> {
 
   void _applyFilter() {
     if (_selectedCategoryId == null) {
-      _filteredProducts = List.from(_products);
+      _filteredProducts = [];
     } else {
       _filteredProducts = _productService.getProductsByCategoryId(_selectedCategoryId!);
     }
@@ -48,7 +53,12 @@ class _HerbalScreenState extends State<HerbalScreen> {
   }
 
   Widget _buildCategoryFilters() {
-    if (_categories.isEmpty) return Padding(padding: const EdgeInsets.all(8.0), child: Text("No categories available.", textAlign: TextAlign.center));
+    if (_categories.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Text("No categories available.", textAlign: TextAlign.center),
+      );
+    }
     List<Widget> filterChips = _categories.map((category) {
       bool isSelected = _selectedCategoryId == category.id;
       return Padding(
@@ -60,7 +70,7 @@ class _HerbalScreenState extends State<HerbalScreen> {
             _onCategorySelected(selected ? category.id : null);
           },
           backgroundColor: isSelected ? Colors.green[100] : Colors.grey[200],
-          selectedColor: Colors.green, // Theme color for Herbal
+          selectedColor: Colors.green,
           labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
         ),
       );
@@ -70,7 +80,7 @@ class _HerbalScreenState extends State<HerbalScreen> {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
         child: FilterChip(
-          label: Text("All"),
+          label: Text("All Categories"),
           selected: _selectedCategoryId == null,
           onSelected: (bool selected) {
             _onCategorySelected(null);
@@ -91,45 +101,108 @@ class _HerbalScreenState extends State<HerbalScreen> {
     );
   }
 
-  Widget _buildProductList() {
-    if (_filteredProducts.isEmpty) return Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("No products found.", textAlign: TextAlign.center)));
-    return ListView.builder(
-      itemCount: _filteredProducts.length,
-      itemBuilder: (context, index) {
-        final product = _filteredProducts[index];
-        final category = _categoryService.getCategoryById(product.categoryId);
-        return Card(
-          margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (product.imagePath.isNotEmpty)
-                  Container(height: 150, width: double.infinity, color: Colors.grey[300], alignment: Alignment.center, child: Icon(Icons.image, size: 50, color: Colors.grey[600]))
-                else
-                  Container(height: 150, width: double.infinity, color: Colors.grey[200], alignment: Alignment.center, child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey[500])),
-                SizedBox(height: 10),
-                Text(product.name, style: Theme.of(context).textTheme.headline6),
-                SizedBox(height: 4),
-                Text(category?.name ?? 'Uncategorized', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                SizedBox(height: 8),
-                Text(product.description.isNotEmpty ? product.description : 'No description.', maxLines: 2, overflow: TextOverflow.ellipsis),
-                SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildProductCard(Product product) {
+    final category = _categoryService.getCategoryById(product.categoryId);
+    return Container(
+      width: _productCardWidth,
+      child: Card(
+        margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProductDetailScreen(product: product),
+              ),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (product.imagePath.isNotEmpty)
+                Container(height: 120, width: double.infinity, color: Colors.grey[300], alignment: Alignment.center, child: Icon(Icons.image, size: 40, color: Colors.grey[600]))
+              else
+                Container(height: 120, width: double.infinity, color: Colors.grey[200], alignment: Alignment.center, child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey[500])),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('\$${product.price.toStringAsFixed(2)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
-                    Text('Stock: \${product.stock}', style: TextStyle(fontSize: 12)),
+                    Text(product.name, style: Theme.of(context).textTheme.subtitle1?.copyWith(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis,),
+                    SizedBox(height: 2),
+                    Text(category?.name ?? 'Uncategorized', style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+                    SizedBox(height: 4),
+                    Text(product.description.isNotEmpty ? product.description : 'No description.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12)),
+                    SizedBox(height: 6),
+                    Text('\$${product.price.toStringAsFixed(2)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
+
+  Widget _buildHorizontalProductList(String title, List<Product> productsInRow) {
+    if (productsInRow.isEmpty) {
+      return SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Text(title, style: Theme.of(context).textTheme.headline6),
+        ),
+        Container(
+          height: _productCardHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: productsInRow.length,
+            itemBuilder: (context, index) {
+              return _buildProductCard(productsInRow[index]);
+            },
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductDisplay() {
+    if (_selectedCategoryId != null) {
+      if (_filteredProducts.isEmpty) {
+        return Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("No products found in this category.", textAlign: TextAlign.center)));
+      }
+      final categoryName = _categoryService.getCategoryById(_selectedCategoryId!)?.name ?? "Selected Category";
+      return _buildHorizontalProductList(categoryName, _filteredProducts);
+    } else {
+      if (_categories.isEmpty) {
+         return Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("No categories found. Please add categories in Admin panel.", textAlign: TextAlign.center)));
+      }
+      List<Widget> categoryRows = _categories.map((category) {
+        List<Product> productsForThisCategory = _productService.getProductsByCategoryId(category.id);
+        if (productsForThisCategory.isNotEmpty) {
+          return _buildHorizontalProductList(category.name, productsForThisCategory);
+        }
+        return SizedBox.shrink();
+      }).toList();
+
+      bool hasContent = categoryRows.any((widget) => widget is! SizedBox);
+      if (!hasContent && _products.isEmpty) {
+         return Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("No products found. Please add products in Admin panel.", textAlign: TextAlign.center)));
+      }
+      if (!hasContent && _products.isNotEmpty) { // Products exist but not in any of the current categories
+         return Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text("No products found for the available categories. Check product category assignments.", textAlign: TextAlign.center)));
+      }
+
+      return ListView(children: categoryRows);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +214,7 @@ class _HerbalScreenState extends State<HerbalScreen> {
       body: Column(
         children: [
           _buildCategoryFilters(),
-          Expanded(child: _buildProductList()),
+          Expanded(child: _buildProductDisplay()),
         ],
       ),
     );
