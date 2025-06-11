@@ -2,16 +2,33 @@ import '../models/article.dart';
 import 'dart:math'; // For Random
 
 class ArticleService {
-  final List<Article> _articles = [];
+  final List<Article> _articles = [
+    Article(
+      id: 'art_1',
+      title: 'نکات مهم در انتخاب ضد آفتاب مناسب',
+      content: 'انتخاب ضد آفتاب مناسب برای پوست شما یکی از مهم‌ترین قدم‌ها برای حفظ سلامت و جوانی پوست است. نور خورشید، با وجود فواید بسیار، می‌تواند باعث آسیب‌های جدی مانند آفتاب سوختگی، پیری زودرس، لک‌های پوستی و حتی سرطان پوست شود. در این مقاله به بررسی نکات کلیدی در انتخاب یک ضد آفتاب خوب می‌پردازیم... (ادامه مطلب)',
+      datePublished: DateTime.now().subtract(Duration(days: 5)),
+    ),
+    Article(
+      id: 'art_2',
+      title: 'فواید ویتامین C برای بدن و پوست',
+      content: 'ویتامین C یک ویتامین محلول در آب و یک آنتی‌اکسیدان قوی است که نقش‌های حیاتی متعددی در بدن ایفا می‌کند. از تقویت سیستم ایمنی گرفته تا کمک به ساخت کلاژن برای پوست، این ویتامین برای سلامتی کلی ضروری است. بیایید نگاهی دقیق‌تر به فواید ویتامین C بیندازیم... (ادامه مطلب)',
+      datePublished: DateTime.now().subtract(Duration(days: 2)),
+    ),
+  ];
   final Random _random = Random();
 
   List<Article> getAllArticles() {
-    return List.from(_articles);
+    return List.from(_articles); // Return a copy
   }
 
   void addArticle(String title, String content) {
+    if (_articles.any((art) => art.title.toLowerCase() == title.toLowerCase())) {
+      print('Article with title "$title" already exists.'); // Using double quotes for print
+      return;
+    }
     final newArticle = Article(
-      id: (_random.nextInt(999999) + 1).toString(), // Simple random ID
+      id: 'art_user_${(_random.nextInt(99999) + _articles.length + 1).toString()}',
       title: title,
       content: content,
       datePublished: DateTime.now(),
@@ -34,7 +51,7 @@ class ArticleService {
     try {
       return _articles.firstWhere((a) => a.id == articleId);
     } catch (e) {
-      return null;
+      return null; // Not found
     }
   }
 }
