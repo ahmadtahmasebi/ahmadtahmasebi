@@ -13,8 +13,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   List<User> _users = [];
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
-  String _selectedRole = 'user'; // Default role for new users
-  User? _selectedUser;
+  // String _selectedRole = 'user'; // This will be managed by dialog's local state
+  User? _editingUser;
 
   @override
   void initState() {
@@ -31,17 +31,18 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showUserForm({User? user}) {
-    _selectedUser = user;
+    _editingUser = user;
     _usernameController.text = user?.username ?? '';
     _emailController.text = user?.email ?? '';
-    _selectedRole = user?.role ?? 'user';
+    // Use user's role for dialog, or default to 'user' for new.
+    String dialogSelectedRole = user?.role ?? 'user';
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(builder: (context, setDialogState) {
+        return StatefulBuilder(builder: (context, setDialogState) { // Use StatefulBuilder for dialog's own state
           return AlertDialog(
-            title: Text(user == null ? 'افزودن کاربر جدید' : 'ویرایش کاربر'),
+            title: Text(user == null ? 'افزودن کاربر جدید' : 'ویرایش کاربر: ${user!.username}'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -50,6 +51,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     controller: _usernameController,
                     decoration: InputDecoration(labelText: 'نام کاربری'),
                   ),
+                  SizedBox(height: 10),
                   TextField(
                     controller: _emailController,
                     decoration: InputDecoration(labelText: 'ایمیل (اختیاری)'),
@@ -58,7 +60,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(labelText: 'نقش کاربر'),
-                    value: _selectedRole,
+                    value: dialogSelectedRole,
                     items: ['user', 'admin'].map((String role) {
                       return DropdownMenuItem<String>(
                         value: role,
@@ -68,7 +70,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         setDialogState(() {
-                           _selectedRole = newValue;
+                           dialogSelectedRole = newValue;
                         });
                       }
                     },
@@ -87,22 +89,39 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ElevatedButton(
                 child: Text(user == null ? 'افزودن' : 'ذخیره تغییرات'),
                 onPressed: () {
-                  final String actionMessage;
-                  if (user == null) {
-                    // Placeholder for adding user
-                    actionMessage = 'User Add (Placeholder): ${_usernameController.text}';
-                    // User newUser = User(id: DateTime.now().millisecondsSinceEpoch.toString(), username: _usernameController.text, email: _emailController.text, role: _selectedRole);
-                    // _userService.addUser(newUser); // This service method is a placeholder
-                  } else {
-                    // Placeholder for updating user
-                    actionMessage = 'User Update (Placeholder): ${_usernameController.text}';
-                    // User updatedUser = User(id: _selectedUser!.id, username: _usernameController.text, email: _emailController.text, role: _selectedRole);
-                    // _userService.updateUser(updatedUser); // This service method is a placeholder
+                  if (_usernameController.text.isEmpty) {
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       SnackBar(content: Text('نام کاربری نمی‌تواند خالی باشد!')),
+                     );
+                     return;
                   }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('$actionMessage - Data not saved.')),
-                  );
-                  // _loadUsers(); // Call this if service actually modified data
+
+                  final String finalRole = dialogSelectedRole;
+
+                  if (_editingUser == null) {
+                    final newUser = User(
+                      id: '',
+                      username: _usernameController.text,
+                      email: _emailController.text.isNotEmpty ? _emailController.text : null,
+                      role: finalRole,
+                    );
+                    _userService.addUser(newUser);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('کاربر "${newUser.username}" اضافه شد.')),
+                    );
+                  } else {
+                    final updatedUser = User(
+                      id: _editingUser!.id,
+                      username: _usernameController.text,
+                      email: _emailController.text.isNotEmpty ? _emailController.text : null,
+                      role: finalRole,
+                    );
+                    _userService.updateUser(updatedUser);
+                     ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('کاربر "${updatedUser.username}" به‌روزرسانی شد.')),
+                    );
+                  }
+                  _loadUsers();
                   Navigator.of(context).pop();
                   _clearForm();
                 },
@@ -117,8 +136,33 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   void _clearForm() {
     _usernameController.clear();
     _emailController.clear();
-    _selectedRole = 'user';
-    _selectedUser = null;
+    // _selectedRole = 'user'; // No longer needed here, dialog manages its own role state
+    _editingUser = null;
+  }
+
+  void _confirmDeleteUser(User user) {
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('تایید حذف'),
+            content: Text('آیا از حذف کاربر "${user.username}" اطمینان دارید؟ این عمل قابل بازگشت نیست.'),
+            actions: <Widget>[
+              TextButton(child: Text('انصراف'), onPressed: () => Navigator.of(context).pop()),
+              TextButton(
+                child: Text('حذف', style: TextStyle(color: Colors.red)),
+                onPressed: () {
+                  _userService.deleteUser(user.id);
+                  _loadUsers();
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('کاربر "${user.username}" حذف شد.')),
+                  );
+                },
+              ),
+            ],
+          );
+        });
   }
 
   @override
@@ -128,40 +172,42 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         title: Text('مدیریت کاربران'),
         actions: [
           IconButton(
-            icon: Icon(Icons.person_add_alt_1),
+            icon: Icon(Icons.person_add_alt_1_outlined),
             onPressed: () => _showUserForm(),
             tooltip: 'افزودن کاربر جدید',
           ),
         ],
       ),
       body: _users.isEmpty
-          ? Center(child: Text('کاربری برای نمایش وجود ندارد.'))
+          ? Center(child: Text('کاربری برای نمایش وجود ندارد. برای افزودن، روی + کلیک کنید.'))
           : ListView.builder(
+              padding: EdgeInsets.all(8.0),
               itemCount: _users.length,
               itemBuilder: (context, index) {
                 final user = _users[index];
                 return Card(
-                  margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  elevation: 1.5,
+                  margin: EdgeInsets.symmetric(vertical: 4),
                   child: ListTile(
-                    leading: Icon(user.role == 'admin' ? Icons.shield_alt_outlined : Icons.person_outline, color: user.role == 'admin' ? Colors.amber : Colors.blue),
+                    leading: Icon(
+                      user.role == 'admin' ? Icons.shield_outlined : Icons.person_outline,
+                      color: user.role == 'admin' ? Colors.amber.shade700 : Theme.of(context).primaryColor,
+                      size: 30,
+                    ),
                     title: Text(user.username, style: TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('نقش: ${user.role} - ایمیل: ${user.email ?? "وارد نشده"}'),
+                    subtitle: Text('نقش: ${user.role}  |  ایمیل: ${user.email ?? "ثبت نشده"}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(Icons.edit_outlined, color: Colors.grey[700]),
+                          icon: Icon(Icons.edit_outlined, color: Colors.grey[700], size: 20),
                           onPressed: () => _showUserForm(user: user),
+                          tooltip: 'ویرایش کاربر',
                         ),
                         IconButton(
-                          icon: Icon(Icons.delete_outline, color: Colors.red[700]),
-                          onPressed: () {
-                            _userService.deleteUser(user.id); // This is a placeholder
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('حذف کاربر ${user.username} به صورت نمایشی انجام شد (ذخیره نمی‌شود).')),
-                            );
-                            // _loadUsers(); // To reflect change if deleteUser was functional
-                          },
+                          icon: Icon(Icons.delete_outline, color: Colors.red.shade700, size: 20),
+                          onPressed: () => _confirmDeleteUser(user),
+                          tooltip: 'حذف کاربر',
                         ),
                       ],
                     ),

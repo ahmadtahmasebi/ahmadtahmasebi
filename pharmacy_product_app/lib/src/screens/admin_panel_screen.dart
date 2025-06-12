@@ -3,7 +3,8 @@ import 'admin/category_management_screen.dart';
 import 'admin/product_management_screen.dart';
 import 'admin/article_management_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
-import 'admin/user_management_screen.dart'; // Import the new user management screen
+import 'admin/user_management_screen.dart';
+import 'admin/ad_management_screen.dart'; // Import the new ad management screen
 
 class AdminPanelScreen extends StatelessWidget {
   @override
@@ -20,22 +21,24 @@ class AdminPanelScreen extends StatelessWidget {
             title: Text('داشبورد آماری', style: TextStyle(fontWeight: FontWeight.w500)),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AdminDashboardScreen()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => AdminDashboardScreen()));
             },
           ),
           Divider(),
+          ListTile(
+            leading: Icon(Icons.campaign_outlined, color: Theme.of(context).primaryColor), // Ad Management Icon
+            title: Text('مدیریت تبلیغات', style: TextStyle(fontWeight: FontWeight.w500)),
+            trailing: Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => AdManagementScreen()));
+            },
+          ),
           ListTile(
             leading: Icon(Icons.category_outlined, color: Theme.of(context).primaryColor),
             title: Text('مدیریت دسته‌بندی‌ها', style: TextStyle(fontWeight: FontWeight.w500)),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CategoryManagementScreen()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => CategoryManagementScreen()));
             },
           ),
           ListTile(
@@ -43,10 +46,7 @@ class AdminPanelScreen extends StatelessWidget {
             title: Text('مدیریت محصولات', style: TextStyle(fontWeight: FontWeight.w500)),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ProductManagementScreen()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => ProductManagementScreen()));
             },
           ),
           ListTile(
@@ -54,22 +54,16 @@ class AdminPanelScreen extends StatelessWidget {
             title: Text('مدیریت مقالات', style: TextStyle(fontWeight: FontWeight.w500)),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ArticleManagementScreen()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => ArticleManagementScreen()));
             },
           ),
            Divider(),
            ListTile(
-            leading: Icon(Icons.people_alt_outlined, color: Theme.of(context).primaryColor), // Updated color
-            title: Text('مدیریت کاربران', style: TextStyle(fontWeight: FontWeight.w500)), // Updated text
+            leading: Icon(Icons.people_alt_outlined, color: Theme.of(context).primaryColor),
+            title: Text('مدیریت کاربران', style: TextStyle(fontWeight: FontWeight.w500)),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-                 Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => UserManagementScreen()),
-                 );
+                 Navigator.push(context, MaterialPageRoute(builder: (context) => UserManagementScreen()));
             },
           ),
         ],

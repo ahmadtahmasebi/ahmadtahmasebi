@@ -13,31 +13,57 @@ class UserService {
     return List.from(_users);
   }
 
-  // Placeholder methods - no actual data modification for now
+  // Actually add user to the in-memory list
   void addUser(User user) {
-    // Simulate adding for UI feedback, but not persisting in this placeholder version
-    // To make it persist for the session:
-    // final newUser = User(
-    //   id: user.id.isEmpty ? 'user_gen_${_random.nextInt(9999)}' : user.id,
-    //   username: user.username,
-    //   email: user.email,
-    //   role: user.role
-    // );
-    // _users.add(newUser);
-    print('Attempted to add user (placeholder): ${user.username}');
+    // Ensure unique ID
+    String newId = user.id;
+    if (newId.isEmpty || _users.any((u) => u.id == newId)) {
+      newId = 'user_mem_${(_random.nextInt(99999) + _users.length + 1).toString()}';
+    }
+
+    // Check for duplicate username (optional, good practice)
+    if (_users.any((u) => u.username.toLowerCase() == user.username.toLowerCase())) {
+      print('UserService: Username "${user.username}" already exists.');
+      // Optionally throw an error or return a status to be handled by UI
+      return;
+    }
+
+    final newUser = User(
+      id: newId,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    );
+    _users.add(newUser);
+    print('UserService: User "${newUser.username}" added to in-memory list.');
   }
 
+  // Actually update user in the in-memory list
   void updateUser(User user) {
-    print('Attempted to update user (placeholder): ${user.username}');
-    // final index = _users.indexWhere((u) => u.id == user.id);
-    // if (index != -1) {
-    //   _users[index] = user;
-    // }
+    final index = _users.indexWhere((u) => u.id == user.id);
+    if (index != -1) {
+      // Check if new username conflicts with another existing user (excluding self)
+      if (_users.any((u) => u.username.toLowerCase() == user.username.toLowerCase() && u.id != user.id)) {
+          print('UserService: Updated username "${user.username}" conflicts with another user.');
+          // Optionally throw an error or return a status to be handled by UI
+          return;
+      }
+      _users[index] = user;
+      print('UserService: User "${user.username}" updated in in-memory list.');
+    } else {
+      print('UserService: User with ID "${user.id}" not found for update.');
+    }
   }
 
+  // Actually delete user from the in-memory list
   void deleteUser(String userId) {
-    print('Attempted to delete user (placeholder): $userId');
-    // _users.removeWhere((u) => u.id == userId);
+    final initialLength = _users.length;
+    _users.removeWhere((u) => u.id == userId);
+    if (_users.length < initialLength) {
+      print('UserService: User with ID "$userId" deleted from in-memory list.');
+    } else {
+      print('UserService: User with ID "$userId" not found for deletion.');
+    }
   }
 
   User? getUserById(String userId) {
