@@ -1,14 +1,17 @@
+import 'comment_model.dart'; // Import the new Comment model
+
 class Product {
   String id;
   String name;
-  String categoryId; // To link with a Category
+  String categoryId;
   double price;
-  String imagePath; // For now, a local path or placeholder URL
+  String imagePath;
   String description;
   int stock;
   int minStock;
   int likes;
   int viewCount;
+  List<Comment> comments; // New field for comments
 
   Product({
     required this.id,
@@ -18,8 +21,9 @@ class Product {
     this.imagePath = '',
     this.description = '',
     this.stock = 0,
-    this.minStock = 5, // Default minStock
+    this.minStock = 5,
     this.likes = 0,
     this.viewCount = 0,
-  });
+    List<Comment>? comments, // Make comments optional in constructor
+  }) : this.comments = comments ?? []; // Initialize with empty list if null
 }
